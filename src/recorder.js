@@ -12,7 +12,9 @@ import { config } from './config.js';
 
 const SAMPLE_RATE = 48000;
 const CHANNELS = 1;
-const MIN_UTTERANCE_MS = 500; // 이보다 짧은 소리(기침, 키보드 소리 등)는 버림
+// 이보다 짧은 소리는 버림. 13차 회의에서 2초 미만이 777개(전체 67%)였지만 대부분 "네"·잡음·오인식이었다.
+// 의견·반박은 보통 2초를 넘는다. STT 요청 수를 줄이려고 짧은 맞장구는 포기한다.
+const MIN_UTTERANCE_MS = 2000;
 const SILENCE_END_MS = 1000; // 1초 침묵이면 발화 하나가 끝난 것으로 봄
 const MAX_REJOIN = 5; // 음성 연결이 끊겼을 때 다시 들어가 보는 횟수
 const EMPTY_END_MS = 5 * 60 * 1000; // 채널에 사람이 없는 채로 이만큼 지나면 회의를 자동으로 끝냄

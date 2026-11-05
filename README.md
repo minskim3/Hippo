@@ -53,7 +53,7 @@ flowchart TB
 /회의시작 → 녹음 → /회의종료 → STT → 요약 → 노션 업로드 → 디스코드 요약 카드
 ```
 
-1. **녹음** (`src/recorder.js`): 사람별 음성을 받아 1초 동안 말이 없으면 한 발화로 끊어 WAV로 저장합니다(0.5초 미만은 버림).
+1. **녹음** (`src/recorder.js`): 사람별 음성을 받아 1초 동안 말이 없으면 한 발화로 끊어 WAV로 저장합니다(2초 미만은 "네"·잡음이 대부분이라 버림).
 2. **STT** (`src/pipeline/transcribe.js`): OpenRouter의 Whisper large v3로 발화 2개씩 동시에 전사합니다(더 늘리면 OpenRouter가 429로 막습니다). Whisper가 지어내는 상투 문구를 걸러내고, `members.json`의 실명으로 바꿔 시간순 대본을 만듭니다.
 3. **요약** (`src/pipeline/summarize.js`): Claude Sonnet 5.5가 대본을 정해진 JSON(요약·결정 사항·할 일·보류·안건·파트별 진행)으로 정리합니다. 실패하면 Haiku 5.5로 넘어갑니다.
 4. **업로드** (`src/pipeline/notion-publish.js`): Planner에 "N차 회의 (Hippo 작성)" 페이지를 새로 만듭니다. 사람이 쓴 회의록과는 섞지 않습니다.

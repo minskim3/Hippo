@@ -114,7 +114,7 @@ export async function summarizeMeeting(dir, transcript) {
         content: `<meeting_date>${meetingDate}</meeting_date>\n\n${team ? `<team>\n${team}\n</team>\n\n` : ''}<transcript>\n${transcript}\n</transcript>`,
       },
     ],
-  });
+  }, { maxRetries: 5 }); // 429·5xx·연결 끊김은 SDK가 간격을 늘려 가며 다시 보낸다(기본 2번)
 
   const content = completion.choices[0]?.message?.content ?? '';
   console.log(`[summarize] 사용 모델: ${completion.model}`);

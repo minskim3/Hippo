@@ -9,10 +9,18 @@ process.env.MEMBERS_FILE = path.join(os.tmpdir(), 'hippo-test-no-members.json');
 
 // OpenRouter를 가짜로 바꾼다. 테스트마다 modelOutput에 모델이 돌려줄 내용을 넣는다.
 let modelOutput;
+let requestOptions; // create()에 넘긴 두 번째 인자(재시도 횟수 등)
 mock.module(new URL('../../src/openrouter.js', import.meta.url).href, {
   namedExports: {
     openrouter: {
-      chat: { completions: { create: async () => ({ model: 'fake-model', choices: [{ message: { content: modelOutput } }], usage: {} }) } },
+      chat: {
+        completions: {
+          create: async (_body, options) => {
+            requestOptions = options;
+            return { model: 'fake-model', choices: [{ message: { content: modelOutput } }], usage: {} };
+          },
+        },
+      },
     },
   },
 });
@@ -42,4 +50,10 @@ test('올바른 회의록은 minutes.json에 저장한다', async () => {
 
   assert.deepEqual(await summarizeMeeting(dir, '[00:00:01] 준규: 안녕하세요'), validMinutes);
   assert.equal(fs.existsSync(path.join(dir, 'minutes.json')), true);
+});
+
+test('요약 요청은 일시적인 오류에 대비해 5번까지 자동으로 다시 보낸다', async () => {
+  modelOutput = JSON.stringify(validMinutes);
+  await summarizeMeeting(meetingDir(), '[00:00:01] 준규: 안녕하세요');
+  assert.equal(requestOptions?.maxRetries, 5);
 });

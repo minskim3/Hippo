@@ -2,7 +2,7 @@ node_modules/
 .env
 recordings/
 members.json
-brain/
+/brain/
 .bot.pid
 .DS_Store
 wiki/

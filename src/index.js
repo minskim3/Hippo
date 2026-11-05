@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { MeetingRecorder, closeInterruptedMeetings } from './recorder.js';
 import { processMeeting, STEPS } from './pipeline/index.js';
 import { buildSummaryEmbed, buildAnswerEmbed } from './summary-embed.js';
+import { failureReason, canRetry } from './failure.js';
 import { askBrain } from './brain/ask.js';
 import { syncBrain } from './brain/sync.js';
 import { loadWikiState } from './brain/wiki.js';
@@ -100,7 +101,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   } catch (err) {
     console.error(err);
     // 오류를 알리는 답장 자체가 실패해도(상호작용 만료 등) 봇이 죽지 않게 한다.
-    const content = `오류가 발생했습니다: ${err.message}`;
+    const content = `❌ ${failureReason(err)}\n-# 자세한 오류: ${err.message.replace(/\s+/g, ' ').slice(0, 200)}`;
     try {
       if (interaction.deferred || interaction.replied) await interaction.editReply(content);
       else await interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -142,7 +143,8 @@ async function runPipeline(interaction, folder) {
   } catch (err) {
     console.error(err);
     const button = new ButtonBuilder().setCustomId(RETRY_PREFIX + folder).setLabel('다시 시도').setStyle(ButtonStyle.Primary);
-    await reply(interaction, { content: failureMessage(err), components: [new ActionRowBuilder().addComponents(button)] });
+    const components = canRetry(err) ? [new ActionRowBuilder().addComponents(button)] : [];
+    await reply(interaction, { content: failureMessage(err), components });
   } finally {
     processing.delete(folder);
   }
@@ -156,34 +158,9 @@ function failureMessage(err) {
     lines.push(`**멈춘 단계:** ${STEPS[err.step]}${progress}`);
   }
   lines.push(`**원인:** ${failureReason(err)}`);
-  lines.push('녹음과 지금까지 한 작업은 저장돼 있어서, **다시 시도**를 누르면 멈춘 곳부터 이어서 합니다.');
+  if (canRetry(err)) lines.push('녹음과 지금까지 한 작업은 저장돼 있어서, **다시 시도**를 누르면 멈춘 곳부터 이어서 합니다.');
   lines.push(`-# 자세한 오류: ${err.message.replace(/\s+/g, ' ').slice(0, 200)}`);
   return lines.join('\n');
-}
-
-function failureReason(err) {
-  const notion = err.message.match(/^Notion API (\d+)/);
-  if (notion) {
-    const status = Number(notion[1]);
-    if (status === 401 || status === 403 || status === 404) return '노션 연결 권한이 없거나 올릴 페이지를 찾지 못했어요. 노션 통합 연결을 확인한 뒤 다시 시도하세요.';
-    if (status === 429 || status >= 500) return '노션 서버가 바쁘거나 오류가 났어요. 잠시 후 다시 시도하세요.';
-    return `노션이 요청을 거절했어요(${status}). 아래 자세한 오류를 개발자에게 알려 주세요.`;
-  }
-  switch (err.status) {
-    case 429:
-      return 'OpenRouter에 요청이 몰려 잠시 막혔어요. 잔액 문제는 아니에요. 1~2분 뒤 다시 시도하세요.';
-    case 402:
-      return 'OpenRouter 잔액이 부족해요. 충전한 뒤 다시 시도하세요.';
-    case 403:
-      return 'OpenRouter 키 한도나 워크스페이스 월 예산을 넘었어요. 한도를 올린 뒤 다시 시도하세요.';
-    case 401:
-      return 'OpenRouter API 키가 잘못됐거나 만료됐어요. .env의 키를 확인하세요.';
-  }
-  if (err.status >= 500 || err.name === 'APIConnectionError' || err.name === 'APIConnectionTimeoutError') {
-    return 'OpenRouter나 모델 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도하세요.';
-  }
-  if (err.message === '녹음된 발화가 없습니다.') return '녹음된 말소리가 없어요. 다시 시도해도 결과는 같아요.';
-  return '예상하지 못한 오류예요. 다시 시도해 보고, 또 실패하면 아래 자세한 오류를 개발자에게 알려 주세요.';
 }
 
 async function retryMeeting(interaction) {

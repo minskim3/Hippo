@@ -78,6 +78,20 @@ const MINUTES_SCHEMA = {
   additionalProperties: false,
 };
 
+// 노션 업로드가 쓰는 필드가 모두 있는지 확인한다.
+function isValidMinutes(m) {
+  const strings = (a) => Array.isArray(a) && a.every((s) => typeof s === 'string');
+  const list = (a, check) => Array.isArray(a) && a.every((item) => item && check(item));
+  return (
+    typeof m?.summary === 'string' &&
+    strings(m.decisions) &&
+    strings(m.pending) &&
+    list(m.actionItems, (a) => strings(a.assignees) && typeof a.task === 'string') &&
+    list(m.parts, (p) => typeof p.name === 'string' && strings(p.mainWork) && strings(p.upcoming)) &&
+    list(m.agenda, (a) => typeof a.title === 'string' && strings(a.points))
+  );
+}
+
 /** 대본 → 구조화된 회의록 객체. minutes.json으로 캐시한다. */
 export async function summarizeMeeting(dir, transcript) {
   const cached = path.join(dir, 'minutes.json');
@@ -112,6 +126,8 @@ export async function summarizeMeeting(dir, transcript) {
   } catch {
     throw new Error(`회의록 JSON을 해석하지 못했습니다 (모델: ${completion.model})`);
   }
+  // 구조화 출력을 지키지 않는 폴백 모델이 필드를 빼먹을 수 있다. 그대로 캐시하면 다시 시도해도 계속 실패하므로 저장 전에 거른다.
+  if (!isValidMinutes(minutes)) throw new Error(`회의록 형식이 올바르지 않습니다 (모델: ${completion.model})`);
 
   await saveCost(dir, 'summary', {
     model: completion.model,

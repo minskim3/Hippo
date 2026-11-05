@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "test": "node --test --experimental-test-module-mocks",
     "deploy-commands": "node src/deploy-commands.js",
     "process": "node src/pipeline/index.js",
     "brain-sync": "node src/brain/sync.js",

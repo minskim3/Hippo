@@ -55,7 +55,15 @@ export class MeetingRecorder {
       selfDeaf: false, // 들어야 녹음할 수 있음
       selfMute: true,
     });
-    await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
+    // error를 받는 쪽이 없으면 Node가 프로세스를 끈다. 끊김 자체는 Disconnected 처리에서 되살린다.
+    this.connection.on('error', (err) => console.warn('[recorder] 음성 연결 오류:', err.message));
+    try {
+      await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
+    } catch (err) {
+      // 반쯤 열린 연결이 남으면 다음 /회의시작이 그 연결을 재사용해 꼬인다.
+      this.connection.destroy();
+      throw err;
+    }
 
     this.connection.receiver.speaking.on('start', (userId) => this.#onSpeakingStart(userId));
     this.connection.on(VoiceConnectionStatus.Disconnected, () => this.#onDisconnected());

@@ -1,0 +1,8 @@
+node_modules/
+.env
+recordings/
+members.json
+brain/
+.bot.pid
+.DS_Store
+wiki/

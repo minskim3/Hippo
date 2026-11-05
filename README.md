@@ -54,9 +54,9 @@ flowchart TB
 ```
 
 1. **녹음** (`src/recorder.js`): 사람별 음성을 받아 1초 동안 말이 없으면 한 발화로 끊어 WAV로 저장합니다(0.5초 미만은 버림).
-2. **STT** (`src/pipeline/transcribe.js`): OpenRouter의 Whisper large v3로 발화 8개씩 동시에 전사합니다. Whisper가 지어내는 상투 문구를 걸러내고, `members.json`의 실명으로 바꿔 시간순 대본을 만듭니다.
+2. **STT** (`src/pipeline/transcribe.js`): OpenRouter의 Whisper large v3로 발화 2개씩 동시에 전사합니다(더 늘리면 OpenRouter가 429로 막습니다). Whisper가 지어내는 상투 문구를 걸러내고, `members.json`의 실명으로 바꿔 시간순 대본을 만듭니다.
 3. **요약** (`src/pipeline/summarize.js`): Claude Sonnet 5.5가 대본을 정해진 JSON(요약·결정 사항·할 일·보류·안건·파트별 진행)으로 정리합니다. 실패하면 Haiku 5.5로 넘어갑니다.
-4. **업로드** (`src/pipeline/notion-publish.js`): Planner에 같은 날짜의 회의 항목이 있으면 이어 쓰고, 없으면 "N차 회의"를 새로 만듭니다.
+4. **업로드** (`src/pipeline/notion-publish.js`): Planner에 "N차 회의 (Hippo 작성)" 페이지를 새로 만듭니다. 사람이 쓴 회의록과는 섞지 않습니다.
 
 단계마다 결과 파일(`transcript.md`, `minutes.json`)이 남아서, 중간에 실패하면 그 단계부터 다시 이어서 할 수 있습니다.
 
@@ -123,7 +123,7 @@ npm start
 
 ## 노션 회의록
 
-📍 Moamap Planner에 같은 날짜의 "회의" 항목이 있으면 그 페이지 아래에 "🦛 Hippo 회의록"으로 이어 쓰고, 없으면 "N차 회의" 항목을 새로 만듭니다(번호 자동, 태그 회의+비대면, 날짜·참석자 자동).
+📍 Moamap Planner에 항상 "N차 회의 (Hippo 작성)" 항목을 새로 만듭니다. 사람이 쓰는 회의록 페이지는 건드리지 않습니다. 차수는 같은 날짜에 사람이 쓴 "회의" 항목이 있으면 그 차수를 따르고, 없으면 지금까지 가장 큰 차수의 다음 번호를 씁니다. 태그(회의+비대면), 날짜, 참석자는 자동으로 채웁니다.
 본문은 📌 요약 → ✅ 결정 사항 → 📝 할 일(체크박스, 담당자 멘션·기한) → ⏳ 다음 논의 내용이 펼쳐져 있고, 안건별 논의와 파트별 진행 상황은 토글로 접혀 있습니다.
 
 ## 세컨드 브레인 (/물어보기)
@@ -186,6 +186,7 @@ npm run process -- recordings/<회의ID>
 | `src/brain/wiki.js` | 위키 페이지 읽기·쓰기, 반영 대기 상태 |
 | `src/brain/wiki-update.js` | 바뀐 원본을 관련 위키 페이지에 반영 |
 | `src/brain/wiki-lint.js` | 주간 위키 점검 보고 |
+| `test/` | 단위 테스트 (`npm test`, `src/`와 같은 경로에 `*.test.js`) |
 
 ## 참고
 
